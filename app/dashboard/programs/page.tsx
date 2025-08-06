@@ -1,39 +1,59 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Program, programQueries, activityQueries, usageQueries } from '@/lib/supabase'
 
-const mockPrograms = [
-  {
-    id: '1',
-    handle: 'gameface',
-    name: 'Game Face Grooming',
-    perkProgramId: 'pgm_gameface_123',
-    isActive: true,
-    activities: 12,
-    completions: 1847,
-  },
-  {
-    id: '2',
-    handle: 'beautybrand',
-    name: 'Beauty Brand Rewards',
-    perkProgramId: 'pgm_beauty_456',
-    isActive: true,
-    activities: 8,
-    completions: 923,
-  },
-  {
-    id: '3',
-    handle: 'fashionco',
-    name: 'Fashion Co VIP',
-    perkProgramId: 'pgm_fashion_789',
-    isActive: true,
-    activities: 15,
-    completions: 2156,
-  },
-]
+interface ProgramWithStats extends Program {
+  activity_count: number
+  total_completions: number
+  total_views: number
+}
 
 export default function ProgramsPage() {
+  const [programs, setPrograms] = useState<ProgramWithStats[]>([])
+  const [loading, setLoading] = useState(true)
   const [showNewProgram, setShowNewProgram] = useState(false)
+
+  useEffect(() => {
+    loadPrograms()
+  }, [])
+
+  const loadPrograms = async () => {
+    try {
+      // Load programs
+      const { data: programsData, error: programsError } = await programQueries.getAll()
+      if (programsError) throw programsError
+
+      // For each program, get activity count and usage stats
+      const programsWithStats = await Promise.all(
+        programsData?.map(async (program) => {
+          // Count activities for this program
+          const { data: activities, error: activitiesError } = await activityQueries.getByProgram(program.id)
+          if (activitiesError) console.error('Error loading activities:', activitiesError)
+
+          // Get usage stats for this program
+          const { data: usage, error: usageError } = await usageQueries.getByProgram(program.id)
+          if (usageError) console.error('Error loading usage:', usageError)
+
+          const totalCompletions = usage?.reduce((sum, u) => sum + u.completions, 0) || 0
+          const totalViews = usage?.reduce((sum, u) => sum + u.views, 0) || 0
+
+          return {
+            ...program,
+            activity_count: activities?.length || 0,
+            total_completions: totalCompletions,
+            total_views: totalViews
+          }
+        }) || []
+      )
+
+      setPrograms(programsWithStats)
+    } catch (error) {
+      console.error('Failed to load programs:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="px-4 py-6 sm:px-0">
@@ -72,43 +92,119 @@ export default function ProgramsPage() {
                       Activities
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Views
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Completions
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Status
                     </th>
                     <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                      <span className="sr-only">Edit</span>
+                      <span className="sr-only">Actions</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {mockPrograms.map((program) => (
-                    <tr key={program.id}>
-                      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                        {program.name}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {program.handle}.perk.ooo
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {program.activities}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {program.completions.toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                          Active
-                        </span>
-                      </td>
-                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                        <a href="#" className="text-primary-600 hover:text-primary-900">
-                          Edit
-                        </a>
+                  {loading ? (
+                    // Loading skeleton
+                    [...Array(3)].map((_, i) => (
+                      <tr key={i}>
+                        <td className="py-4 pl-4 pr-3 sm:pl-6">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse w-12"></div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="h-5 bg-gray-200 rounded-full animate-pulse w-16"></div>
+                        </td>
+                        <td className="pr-4 sm:pr-6">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : programs.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                        <div className="flex flex-col items-center">
+                          <svg className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <h3 className="text-sm font-medium text-gray-900">No programs</h3>
+                          <p className="mt-1 text-sm text-gray-500">Get started by creating a new program.</p>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    programs.map((program) => (
+                      <tr key={program.id} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap py-4 pl-4 pr-3 sm:pl-6">
+                          <div className="flex items-center">
+                            <div 
+                              className="w-3 h-3 rounded-full mr-3"
+                              style={{ backgroundColor: program.branding?.primaryColor || '#3B82F6' }}
+                            ></div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {program.name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {program.perk_program_id}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          <a 
+                            href={`https://${program.handle}.perk.ooo`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-500"
+                          >
+                            {program.handle}.perk.ooo
+                          </a>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
+                          {program.activity_count}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {program.total_views.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {program.total_completions.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            program.is_active
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {program.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                          <button className="text-primary-600 hover:text-primary-900 mr-4">
+                            Edit
+                          </button>
+                          <button className="text-gray-400 hover:text-gray-500">
+                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

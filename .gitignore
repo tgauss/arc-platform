@@ -3,6 +3,9 @@ node_modules/
 .pnp
 .pnp.js
 
+# Archive (old monorepo structure)
+archive/
+
 # Testing
 coverage/
 .nyc_output

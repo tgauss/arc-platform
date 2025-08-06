@@ -20,6 +20,7 @@ export default function ProgramsPage() {
     api_key: ''
   })
   const [formError, setFormError] = useState('')
+  const [formSuccess, setFormSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -67,6 +68,10 @@ export default function ProgramsPage() {
     e.preventDefault()
     setSubmitting(true)
     setFormError('')
+    setFormSuccess('')
+
+    console.log('🚀 Form submission started')
+    console.log('📝 Form data:', formData)
 
     try {
       // Validate form
@@ -74,7 +79,10 @@ export default function ProgramsPage() {
         throw new Error('All fields are required')
       }
 
+      console.log('✅ Form validation passed')
+
       // Submit to API
+      console.log('📤 Sending request to /api/programs')
       const response = await fetch('/api/programs', {
         method: 'POST',
         headers: {
@@ -83,17 +91,38 @@ export default function ProgramsPage() {
         body: JSON.stringify(formData)
       })
 
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response ok:', response.ok)
+
       const result = await response.json()
+      console.log('📦 Response data:', result)
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to create program')
       }
 
+      console.log('✅ Program created successfully!')
+      setFormSuccess(`Program "${formData.name}" created successfully!`)
+      
+      // Wait a moment to show success message
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      console.log('🔄 Reloading programs list...')
+
       // Success - reload programs and close modal
       await loadPrograms()
+      
+      console.log('✅ Programs list reloaded')
+      console.log('🚪 Closing modal...')
+      
       setShowNewProgram(false)
       setFormData({ name: '', handle: '', perk_program_id: '', api_key: '' })
+      setFormSuccess('')
+      
+      console.log('🎉 Form submission complete!')
+
     } catch (error: any) {
+      console.error('❌ Form submission error:', error)
       setFormError(error.message)
     } finally {
       setSubmitting(false)
@@ -279,6 +308,12 @@ export default function ProgramsPage() {
               </div>
             )}
             
+            {formSuccess && (
+              <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                {formSuccess}
+              </div>
+            )}
+            
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -364,6 +399,7 @@ export default function ProgramsPage() {
                   onClick={() => {
                     setShowNewProgram(false)
                     setFormError('')
+                    setFormSuccess('')
                     setFormData({ name: '', handle: '', perk_program_id: '', api_key: '' })
                   }}
                   disabled={submitting}

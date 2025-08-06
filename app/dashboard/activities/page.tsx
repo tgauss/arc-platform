@@ -51,12 +51,12 @@ export default function ActivitiesPage() {
           </p>
         </div>
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          <button
-            type="button"
+          <Link
+            href="/dashboard/activities/create"
             className="block rounded-md bg-primary-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-primary-500"
           >
             Create Activity
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -86,15 +86,15 @@ export default function ActivitiesPage() {
             <h3 className="mt-2 text-sm font-medium text-gray-900">No activities</h3>
             <p className="mt-1 text-sm text-gray-500">Get started by creating your first activity.</p>
             <div className="mt-6">
-              <button
-                type="button"
+              <Link
+                href="/dashboard/activities/create"
                 className="inline-flex items-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500"
               >
                 <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                 </svg>
                 Create Activity
-              </button>
+              </Link>
             </div>
           </div>
         ) : (

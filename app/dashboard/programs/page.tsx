@@ -13,6 +13,14 @@ export default function ProgramsPage() {
   const [programs, setPrograms] = useState<ProgramWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewProgram, setShowNewProgram] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    handle: '',
+    perk_program_id: '',
+    api_key: ''
+  })
+  const [formError, setFormError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadPrograms()
@@ -52,6 +60,54 @@ export default function ProgramsPage() {
       console.error('Failed to load programs:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setFormError('')
+
+    try {
+      // Validate form
+      if (!formData.name || !formData.handle || !formData.perk_program_id || !formData.api_key) {
+        throw new Error('All fields are required')
+      }
+
+      // Submit to API
+      const response = await fetch('/api/programs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create program')
+      }
+
+      // Success - reload programs and close modal
+      await loadPrograms()
+      setShowNewProgram(false)
+      setFormData({ name: '', handle: '', perk_program_id: '', api_key: '' })
+    } catch (error: any) {
+      setFormError(error.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    
+    // Auto-generate handle from name
+    if (name === 'name') {
+      const handle = value.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20)
+      setFormData(prev => ({ ...prev, handle }))
     }
   }
 
@@ -213,74 +269,105 @@ export default function ProgramsPage() {
       </div>
 
       {showNewProgram && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Program</h3>
-            <form className="space-y-4">
+            
+            {formError && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {formError}
+              </div>
+            )}
+            
+            <form onSubmit={handleFormSubmit} className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                  Program Name
+                  Program Name *
                 </label>
                 <input
                   type="text"
                   name="name"
                   id="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   placeholder="Game Face Grooming"
+                  required
                 />
               </div>
+              
               <div>
                 <label htmlFor="handle" className="block text-sm font-medium text-gray-700">
-                  Subdomain Handle
+                  Subdomain Handle *
                 </label>
                 <div className="mt-1 flex rounded-md shadow-sm">
                   <input
                     type="text"
                     name="handle"
                     id="handle"
+                    value={formData.handle}
+                    onChange={handleInputChange}
                     className="block w-full flex-1 rounded-none rounded-l-md border-gray-300 focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                     placeholder="gameface"
+                    pattern="[a-z0-9-]+"
+                    required
                   />
                   <span className="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
                     .perk.ooo
                   </span>
                 </div>
+                <p className="mt-1 text-xs text-gray-500">Letters, numbers, and hyphens only</p>
               </div>
+              
               <div>
-                <label htmlFor="perkId" className="block text-sm font-medium text-gray-700">
-                  Perk Program ID
+                <label htmlFor="perk_program_id" className="block text-sm font-medium text-gray-700">
+                  Perk Program ID *
                 </label>
                 <input
                   type="text"
-                  name="perkId"
-                  id="perkId"
+                  name="perk_program_id"
+                  id="perk_program_id"
+                  value={formData.perk_program_id}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   placeholder="pgm_123456"
+                  required
                 />
               </div>
+              
               <div>
-                <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">
-                  Perk API Key
+                <label htmlFor="api_key" className="block text-sm font-medium text-gray-700">
+                  Perk API Key *
                 </label>
                 <input
                   type="password"
-                  name="apiKey"
-                  id="apiKey"
+                  name="api_key"
+                  id="api_key"
+                  value={formData.api_key}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  placeholder="••••••••••••••••"
+                  placeholder="Enter your Perk API key"
+                  required
                 />
               </div>
+              
               <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
                 <button
                   type="submit"
-                  className="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 sm:col-start-2"
+                  disabled={submitting}
+                  className="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 sm:col-start-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Add Program
+                  {submitting ? 'Creating...' : 'Add Program'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowNewProgram(false)}
-                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
+                  onClick={() => {
+                    setShowNewProgram(false)
+                    setFormError('')
+                    setFormData({ name: '', handle: '', perk_program_id: '', api_key: '' })
+                  }}
+                  disabled={submitting}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>

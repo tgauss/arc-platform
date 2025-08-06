@@ -14,6 +14,7 @@ interface ActivityForm {
   points_value: number
   ai_prompt: string
   config: Record<string, any>
+  status?: string
 }
 
 const ACTIVITY_TYPES = [
